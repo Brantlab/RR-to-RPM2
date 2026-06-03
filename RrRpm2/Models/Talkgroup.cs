@@ -2,6 +2,7 @@ namespace RrRpm2.Models;
 
 public sealed class Talkgroup
 {
+    public bool IsSelected { get; set; } = true;
     public int Id { get; init; }
     public int DecimalId { get; init; }
     public string Alpha { get; init; } = string.Empty;

@@ -8,45 +8,47 @@
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <Style TargetType="TextBox">
-            <Setter Property="Margin" Value="0,4,10,10" />
-            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Margin" Value="0,2,8,6" />
+            <Setter Property="MinHeight" Value="26" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
         <Style TargetType="PasswordBox">
-            <Setter Property="Margin" Value="0,4,10,10" />
-            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Margin" Value="0,2,8,6" />
+            <Setter Property="MinHeight" Value="26" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
         <Style TargetType="ComboBox">
-            <Setter Property="Margin" Value="0,4,10,10" />
-            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Margin" Value="0,2,8,6" />
+            <Setter Property="MinHeight" Value="26" />
         </Style>
         <Style TargetType="Button">
-            <Setter Property="MinHeight" Value="30" />
-            <Setter Property="Padding" Value="12,4" />
-            <Setter Property="Margin" Value="0,4,10,10" />
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="Padding" Value="9,2" />
+            <Setter Property="Margin" Value="0,2,8,6" />
         </Style>
         <Style TargetType="CheckBox">
-            <Setter Property="Margin" Value="0,4,16,10" />
+            <Setter Property="Margin" Value="0,2,12,6" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <Style TargetType="TextBlock" x:Key="FieldLabel">
+            <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="#263238" />
         </Style>
     </Window.Resources>
 
     <DockPanel Background="#F5F7F9">
-        <Border DockPanel.Dock="Top" Background="#FFFFFF" BorderBrush="#D7DEE6" BorderThickness="0,0,0,1" Padding="16,14">
+        <Border DockPanel.Dock="Top" Background="#FFFFFF" BorderBrush="#D7DEE6" BorderThickness="0,0,0,1" Padding="10,8">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.05*" />
+                    <ColumnDefinition Width="1.05*" />
                     <ColumnDefinition Width="1.15*" />
-                    <ColumnDefinition Width="1.15*" />
-                    <ColumnDefinition Width="1.15*" />
-                    <ColumnDefinition Width="0.8*" />
+                    <ColumnDefinition Width="0.85*" />
+                    <ColumnDefinition Width="1.05*" />
+                    <ColumnDefinition Width="1.05*" />
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
@@ -65,9 +67,25 @@
                 </StackPanel>
                 <StackPanel Grid.Column="3">
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Connection" />
-                    <Button x:Name="TestConnectionButton" Content="Login" Click="TestConnectionButton_Click" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="TestConnectionButton" Content="Login" Click="TestConnectionButton_Click" />
+                        <Button x:Name="ForgetCredentialsButton" Content="Forget" Click="ForgetCredentialsButton_Click" IsEnabled="False" />
+                    </StackPanel>
                     <CheckBox x:Name="SaveCredentialsBox" Content="Save credentials" />
-                    <Button x:Name="ForgetCredentialsButton" Content="Forget" Click="ForgetCredentialsButton_Click" IsEnabled="False" />
+                </StackPanel>
+                <StackPanel Grid.Column="4">
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Search state" />
+                    <ComboBox x:Name="StateSearchBox"
+                              DisplayMemberPath="DisplayName"
+                              SelectionChanged="StateSearchBox_SelectionChanged"
+                              DropDownOpened="StateSearchBox_DropDownOpened"
+                              ToolTip="Select a RadioReference state." />
+                </StackPanel>
+                <StackPanel Grid.Column="5">
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Search county" />
+                    <ComboBox x:Name="CountySearchBox"
+                              DisplayMemberPath="DisplayName"
+                              ToolTip="Select a county. Leave blank for statewide systems." />
                 </StackPanel>
 
                 <StackPanel Grid.Row="1" Grid.Column="0">
@@ -78,181 +96,285 @@
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Lookup by SysID" />
                     <TextBox x:Name="SysIdBox" ToolTip="Optional system identifier, for example a P25 system ID. Use lookup to find RadioReference SID values." />
                 </StackPanel>
-                <StackPanel Grid.Row="1" Grid.Column="2">
+                <StackPanel Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2">
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Lookup results" />
                     <ComboBox x:Name="SystemResultsBox"
                               DisplayMemberPath="DisplayName"
                               SelectedValuePath="Sid"
                               SelectionChanged="SystemResultsBox_SelectionChanged" />
                 </StackPanel>
-                <StackPanel Grid.Row="1" Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Bottom">
+                <StackPanel Grid.Row="1" Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Bottom">
                     <Button x:Name="LookupButton" Content="Lookup" Click="LookupButton_Click" />
                     <Button x:Name="LoadButton" Content="Load TGIDs" Click="LoadButton_Click" />
                 </StackPanel>
-
-                <StackPanel Grid.Row="2" Grid.Column="0">
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="Search state" />
-                    <ComboBox x:Name="StateSearchBox"
-                              DisplayMemberPath="DisplayName"
-                              SelectionChanged="StateSearchBox_SelectionChanged"
-                              DropDownOpened="StateSearchBox_DropDownOpened"
-                              ToolTip="Select a RadioReference state." />
-                </StackPanel>
-                <StackPanel Grid.Row="2" Grid.Column="1">
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="Search county" />
-                    <ComboBox x:Name="CountySearchBox"
-                              DisplayMemberPath="DisplayName"
-                              ToolTip="Select a county. Leave blank for statewide systems." />
-                </StackPanel>
-                <StackPanel Grid.Row="2" Grid.Column="2">
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="State/county results" />
-                    <TextBlock Foreground="#607D8B" Margin="0,8,10,10" Text="Results appear in Lookup results." />
-                </StackPanel>
-                <StackPanel Grid.Row="2" Grid.Column="3" VerticalAlignment="Bottom">
+                <StackPanel Grid.Row="1" Grid.Column="5" VerticalAlignment="Bottom">
                     <Button x:Name="CountySearchButton" Content="Search County" Click="CountySearchButton_Click" />
                 </StackPanel>
             </Grid>
         </Border>
 
-        <Border DockPanel.Dock="Bottom" Background="#FFFFFF" BorderBrush="#D7DEE6" BorderThickness="0,1,0,0" Padding="16,10">
+        <Border DockPanel.Dock="Bottom" Background="#FFFFFF" BorderBrush="#D7DEE6" BorderThickness="0,1,0,0" Padding="10,6">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="220" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="#37474F" Text="Ready." />
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <ProgressBar x:Name="BusyProgressBar"
+                             Grid.Column="1"
+                             Height="14"
+                             Margin="8,0,10,0"
+                             VerticalAlignment="Center"
+                             Minimum="0"
+                             Maximum="100"
+                             Visibility="Collapsed" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <Button x:Name="ExportButton" Content="Export RPM2 CSV" Click="ExportButton_Click" IsEnabled="False" />
                 </StackPanel>
             </Grid>
         </Border>
 
-        <Grid Margin="16">
+        <Grid Margin="10">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Border Background="#FFFFFF" BorderBrush="#D7DEE6" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,0,12">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="1.1*" />
-                        <ColumnDefinition Width="0.8*" />
-                        <ColumnDefinition Width="0.8*" />
-                        <ColumnDefinition Width="0.9*" />
-                        <ColumnDefinition Width="1.7*" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Style="{StaticResource FieldLabel}" Text="RPM2 group set name" />
-                        <TextBox x:Name="GroupSetNameBox" Text="RR IMPORT" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1">
-                        <TextBlock Style="{StaticResource FieldLabel}" Text="RPM2 system ID" />
-                        <TextBox x:Name="RpmSystemIdBox" Text="0x0" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Style="{StaticResource FieldLabel}" Text="Visual ID color" />
-                        <ComboBox x:Name="VisualColorBox" SelectedIndex="0">
-                            <ComboBoxItem Content="White" />
-                            <ComboBoxItem Content="Yellow" />
-                            <ComboBoxItem Content="Green" />
-                            <ComboBoxItem Content="Blue" />
-                            <ComboBoxItem Content="Red" />
-                        </ComboBox>
-                    </StackPanel>
-                    <StackPanel Grid.Column="3">
-                        <TextBlock Style="{StaticResource FieldLabel}" Text="Filter text" />
-                        <TextBox x:Name="FilterBox" TextChanged="FilterBox_TextChanged" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="4">
-                        <TextBlock Style="{StaticResource FieldLabel}" Text="Counties/categories" />
-                        <ListBox x:Name="CountyFilterBox"
-                                 MinHeight="60"
-                                 MaxHeight="96"
-                                 Margin="0,4,10,10"
-                                 SelectionMode="Extended"
-                                 SelectionChanged="CountyFilterBox_SelectionChanged" />
-                    </StackPanel>
-                    <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" Orientation="Horizontal" VerticalAlignment="Bottom">
-                        <CheckBox x:Name="IncludeEncryptedBox" Content="Include encrypted" IsChecked="True" Checked="FilterBox_TextChanged" Unchecked="FilterBox_TextChanged" />
-                        <StackPanel Width="190" Margin="0,0,16,10">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="Long name source" />
-                            <ComboBox x:Name="LongNameSourceBox" SelectedIndex="0" Margin="0,4,0,0">
-                                <ComboBoxItem Content="Smart" />
-                                <ComboBoxItem Content="Alpha" />
-                                <ComboBoxItem Content="Description" />
-                                <ComboBoxItem Content="Category + Alpha" />
-                            </ComboBox>
-                        </StackPanel>
-                    </StackPanel>
-                    <WrapPanel Grid.Row="2" Grid.ColumnSpan="5" Margin="0,8,0,0">
-                        <CheckBox x:Name="TransmitBox" Content="Transmit" IsChecked="False" />
-                        <CheckBox x:Name="ReceiveBox" Content="Receive" IsChecked="True" />
-                        <CheckBox x:Name="CallsBox" Content="Calls" IsChecked="True" />
-                        <CheckBox x:Name="ScanBox" Content="Scan" IsChecked="True" />
-                        <CheckBox x:Name="AlertTonesBox" Content="Alert tones" IsChecked="True" />
-                        <CheckBox x:Name="BacklightBox" Content="Backlight" IsChecked="True" />
-                        <CheckBox x:Name="ScanListMemberBox" Content="Scan list member" IsChecked="True" />
-                        <CheckBox x:Name="ConventionalFallbackBox" Content="Conv fallback" IsChecked="False" />
-                        <CheckBox x:Name="UseGroupIdZeroBox" Content="Use group ID 0" IsChecked="False" />
-                        <CheckBox x:Name="SuppressKeyNumberBox" Content="Suppress key number" IsChecked="False" />
-                        <CheckBox x:Name="EncryptCallParametersBox" Content="Encrypt call params" IsChecked="False" />
-                        <CheckBox x:Name="MandownBox" Content="Mandown" IsChecked="False" />
-                    </WrapPanel>
-                </Grid>
-            </Border>
+            <TabControl Margin="0,0,0,8">
+                <TabItem Header="TGIDs">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                    <Border Background="#FFFFFF" BorderBrush="#D7DEE6" BorderThickness="1" Padding="8" Margin="0,0,0,8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.05*" />
+                                <ColumnDefinition Width="0.8*" />
+                                <ColumnDefinition Width="0.75*" />
+                                <ColumnDefinition Width="0.95*" />
+                                <ColumnDefinition Width="0.95*" />
+                                <ColumnDefinition Width="1.65*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="RPM2 group set name" />
+                                <TextBox x:Name="GroupSetNameBox" Text="RR IMPORT" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="RPM2 system ID" />
+                                <TextBox x:Name="RpmSystemIdBox" Text="0x0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Visual ID color" />
+                                <ComboBox x:Name="VisualColorBox" SelectedIndex="0">
+                                    <ComboBoxItem Content="White" />
+                                    <ComboBoxItem Content="Yellow" />
+                                    <ComboBoxItem Content="Green" />
+                                    <ComboBoxItem Content="Blue" />
+                                    <ComboBoxItem Content="Red" />
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="3">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Long name source" />
+                                <ComboBox x:Name="LongNameSourceBox" SelectedIndex="0">
+                                    <ComboBoxItem Content="Smart" />
+                                    <ComboBoxItem Content="Alpha" />
+                                    <ComboBoxItem Content="Description" />
+                                    <ComboBoxItem Content="Category + Alpha" />
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Filter text" />
+                                <TextBox x:Name="FilterBox" TextChanged="FilterBox_TextChanged" />
+                            </StackPanel>
+                            <Grid Grid.Column="5" Grid.RowSpan="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Counties/categories" />
+                                    <ListBox x:Name="CountyFilterBox"
+                                             MinHeight="44"
+                                             MaxHeight="66"
+                                             Margin="0,2,8,4"
+                                             SelectionMode="Single">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox Content="{Binding Name}"
+                                                          IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                          Checked="CategoryFilterCheckBox_Changed"
+                                                          Unchecked="CategoryFilterCheckBox_Changed" />
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="All categories" Click="SelectAllCategoriesButton_Click" />
+                                        <Button Content="Clear categories" Click="ClearCategoriesButton_Click" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Tags" />
+                                    <ListBox x:Name="TagFilterBox"
+                                             MinHeight="44"
+                                             MaxHeight="66"
+                                             Margin="0,2,8,4"
+                                             SelectionMode="Single">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox Content="{Binding Name}"
+                                                          IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                          Checked="TagFilterCheckBox_Changed"
+                                                          Unchecked="TagFilterCheckBox_Changed" />
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="All tags" Click="SelectAllTagsButton_Click" />
+                                        <Button Content="Clear tags" Click="ClearTagsButton_Click" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" Orientation="Horizontal" VerticalAlignment="Bottom">
+                                <CheckBox x:Name="IncludeEncryptedBox" Content="Include encrypted" IsChecked="True" Checked="FilterBox_TextChanged" Unchecked="FilterBox_TextChanged" />
+                                <Button Content="Select visible TGIDs" Click="SelectVisibleTalkgroupsButton_Click" />
+                                <Button Content="Clear visible TGIDs" Click="ClearVisibleTalkgroupsButton_Click" />
+                            </StackPanel>
+                            <WrapPanel Grid.Row="2" Grid.ColumnSpan="5" Margin="0,2,0,0">
+                                <CheckBox x:Name="TransmitBox" Content="Transmit" IsChecked="False" />
+                                <CheckBox x:Name="ReceiveBox" Content="Receive" IsChecked="True" />
+                                <CheckBox x:Name="CallsBox" Content="Calls" IsChecked="False" />
+                                <CheckBox x:Name="ScanBox" Content="Scan" IsChecked="True" />
+                                <CheckBox x:Name="AlertTonesBox" Content="Alert tones" IsChecked="True" />
+                                <CheckBox x:Name="BacklightBox" Content="Backlight" IsChecked="True" />
+                                <CheckBox x:Name="ScanListMemberBox" Content="Scan list member" IsChecked="True" />
+                                <CheckBox x:Name="ConventionalFallbackBox" Content="Conv fallback" IsChecked="False" />
+                                <CheckBox x:Name="UseGroupIdZeroBox" Content="Use group ID 0" IsChecked="False" />
+                                <CheckBox x:Name="SuppressKeyNumberBox" Content="Suppress key number" IsChecked="False" />
+                                <CheckBox x:Name="EncryptCallParametersBox" Content="Encrypt call params" IsChecked="False" />
+                                <CheckBox x:Name="MandownBox" Content="Mandown" IsChecked="False" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+                    <DataGrid x:Name="TalkgroupsGrid"
+                              Grid.Row="1"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              IsReadOnly="False"
+                              EnableRowVirtualization="True"
+                              GridLinesVisibility="Horizontal"
+                              Background="#FFFFFF"
+                              BorderBrush="#D7DEE6"
+                              BorderThickness="1"
+                              AlternatingRowBackground="#F8FAFC">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Export" Width="70">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox HorizontalAlignment="Center"
+                                                  IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="TGID" Binding="{Binding DecimalId}" Width="90" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Alpha" Binding="{Binding Alpha}" Width="140" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="2*" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Mode" Binding="{Binding Mode}" Width="70" IsReadOnly="True" />
+                            <DataGridCheckBoxColumn Header="Encrypted" Binding="{Binding IsEncrypted, Mode=OneWay}" Width="90" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Category" Binding="{Binding CategoryName}" Width="180" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Tag" Binding="{Binding TagSummary}" Width="160" IsReadOnly="True" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    </Grid>
+                </TabItem>
+                <TabItem Header="Sites">
+                    <Border Background="#FFFFFF" BorderBrush="#D7DEE6" BorderThickness="1" Padding="8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="1.15*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.35*" />
+                                    <ColumnDefinition Width="0.9*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Sites/control channels" />
+                                    <ListBox x:Name="SitesBox"
+                                             Height="142"
+                                             Margin="0,2,12,0"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                             SelectionMode="Single">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox Content="{Binding DisplayName}"
+                                                          IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                        <Button Content="Select visible" Click="SelectVisibleSitesButton_Click" />
+                                        <Button Content="Clear all" Click="ClearSitesButton_Click" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Site counties" />
+                                    <ListBox x:Name="SiteCountyFilterBox"
+                                             Height="142"
+                                             Margin="0,2,12,0"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                             SelectionMode="Single">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox Content="{Binding Name}"
+                                                          IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                          Checked="SiteCountyFilterCheckBox_Changed"
+                                                          Unchecked="SiteCountyFilterCheckBox_Changed" />
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                        <Button Content="All" Click="SelectAllSiteCountiesButton_Click" />
+                                        <Button Content="Clear" Click="ClearSiteCountiesButton_Click" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                            <Grid Grid.Column="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Frequency CSV" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="TX fallback" />
+                                    <TextBox x:Name="SiteTransmitPlaceholderBox" Text="763.00000" ToolTip="Fallback dummy transmit frequency; export uses the matching receive-frequency bank when possible." />
+                                    <Button x:Name="ExportSitesButton" Content="Export Site CSV" Click="ExportSitesButton_Click" IsEnabled="False" HorizontalAlignment="Left" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Site Alias CSV" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Alias list name" />
+                                    <TextBox x:Name="SiteAliasListNameBox" Text="STEL0001" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="P25 WAN list" />
+                                    <TextBox x:Name="SiteAliasWanListBox" Text="P25LS001" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="WA network" />
+                                    <TextBox x:Name="SiteAliasNetworkBox" Text="MARCS" />
+                                    <Button x:Name="ExportSiteAliasesButton" Content="Export Alias CSV" Click="ExportSiteAliasesButton_Click" IsEnabled="False" HorizontalAlignment="Left" />
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </TabItem>
+            </TabControl>
 
-            <Border Grid.Row="1" Background="#FFFFFF" BorderBrush="#D7DEE6" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,0,12">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource FieldLabel}" Text="Sites/control channels" />
-                        <ListBox x:Name="SitesBox"
-                                 MinHeight="72"
-                                 MaxHeight="132"
-                                 Margin="0,4,10,0"
-                                 DisplayMemberPath="DisplayName"
-                                 SelectionMode="Extended" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Bottom">
-                        <TextBlock Style="{StaticResource FieldLabel}" Text="TX fallback" />
-                        <TextBox x:Name="SiteTransmitPlaceholderBox" Text="763.00000" ToolTip="Fallback dummy transmit frequency; export uses the matching receive-frequency bank when possible." />
-                        <CheckBox x:Name="ExportAllSitesIfNoneSelectedBox" Content="All sites if none selected" IsChecked="True" />
-                        <Button x:Name="ExportSitesButton" Content="Export Site CSV" Click="ExportSitesButton_Click" IsEnabled="False" />
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <DataGrid x:Name="TalkgroupsGrid"
-                      Grid.Row="2"
-                      AutoGenerateColumns="False"
-                      CanUserAddRows="False"
-                      IsReadOnly="True"
-                      EnableRowVirtualization="True"
-                      GridLinesVisibility="Horizontal"
-                      Background="#FFFFFF"
-                      BorderBrush="#D7DEE6"
-                      BorderThickness="1"
-                      AlternatingRowBackground="#F8FAFC">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="TGID" Binding="{Binding DecimalId}" Width="90" />
-                    <DataGridTextColumn Header="Alpha" Binding="{Binding Alpha}" Width="140" />
-                    <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="2*" />
-                    <DataGridTextColumn Header="Mode" Binding="{Binding Mode}" Width="70" />
-                    <DataGridCheckBoxColumn Header="Encrypted" Binding="{Binding IsEncrypted, Mode=OneWay}" Width="90" />
-                    <DataGridTextColumn Header="Category" Binding="{Binding CategoryName}" Width="180" />
-                    <DataGridTextColumn Header="Tag" Binding="{Binding TagSummary}" Width="160" />
-                </DataGrid.Columns>
-            </DataGrid>
         </Grid>
     </DockPanel>
 </Window>

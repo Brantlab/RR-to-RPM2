@@ -64,7 +64,6 @@ public static class Rpm2SiteCsvExporter
             string.Empty,
             string.Empty,
             string.Empty,
-            string.Empty,
             transmitValue,
             receiveValue,
             IsNpspac(receiveFrequency) ? "TRUE" : "FALSE",

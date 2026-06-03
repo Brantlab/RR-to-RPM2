@@ -3,12 +3,15 @@ namespace RrRpm2.Models;
 public sealed class TrunkedSite
 {
     public int SiteId { get; init; }
+    public int? RfssId { get; init; }
+    public int? RfssSiteId { get; init; }
     public string SiteNumber { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
     public string Location { get; init; } = string.Empty;
     public decimal? Latitude { get; init; }
     public decimal? Longitude { get; init; }
     public decimal? Range { get; init; }
+    public bool IsSelected { get; set; } = true;
     public IReadOnlyList<TrunkedSiteFrequency> Frequencies { get; init; } = [];
 
     public IReadOnlyList<TrunkedSiteFrequency> ControlFrequencies =>

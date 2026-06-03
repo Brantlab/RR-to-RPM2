@@ -12,14 +12,20 @@ namespace RrRpm2;
 
 public partial class MainWindow : Window
 {
+    private const string NoTagFilterName = "(No tag)";
     private readonly ObservableCollection<Talkgroup> _talkgroups = [];
     private readonly ObservableCollection<TrunkedSystem> _systems = [];
     private readonly ObservableCollection<TrunkedSite> _sites = [];
     private readonly ObservableCollection<RadioReferenceState> _states = [];
     private readonly ObservableCollection<RadioReferenceCounty> _counties = [];
+    private readonly ObservableCollection<FilterOption> _categoryFilters = [];
+    private readonly ObservableCollection<FilterOption> _tagFilters = [];
+    private readonly ObservableCollection<FilterOption> _siteCountyFilters = [];
     private readonly ICollectionView _talkgroupView;
+    private readonly ICollectionView _siteView;
     private readonly RadioReferenceClient _radioReferenceClient = new();
     private bool _statesLoaded;
+    private bool _savedCredentialsLoaded;
 
     public MainWindow()
     {
@@ -29,22 +35,30 @@ public partial class MainWindow : Window
         SitesBox.ItemsSource = _sites;
         StateSearchBox.ItemsSource = _states;
         CountySearchBox.ItemsSource = _counties;
-        LoadSavedCredentials();
+        CountyFilterBox.ItemsSource = _categoryFilters;
+        TagFilterBox.ItemsSource = _tagFilters;
+        SiteCountyFilterBox.ItemsSource = _siteCountyFilters;
+        _savedCredentialsLoaded = LoadSavedCredentials();
         _talkgroupView = CollectionViewSource.GetDefaultView(_talkgroups);
         _talkgroupView.Filter = FilterTalkgroup;
+        _siteView = CollectionViewSource.GetDefaultView(_sites);
+        _siteView.Filter = FilterSite;
+        Loaded += MainWindow_Loaded;
     }
 
     private async void TestConnectionButton_Click(object sender, RoutedEventArgs e)
     {
-        await RunGuardedAsync("Logging in to RadioReference...", async () =>
+        await LoginAsync("Logging in to RadioReference...");
+    }
+
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (!_savedCredentialsLoaded)
         {
-            var user = await _radioReferenceClient.GetUserDataAsync(GetAuth());
-            await LoadStatesAsync();
-            SaveCredentialsIfRequested();
-            SetStatus(string.IsNullOrWhiteSpace(user)
-                ? "Login succeeded."
-                : $"Login succeeded: {user}");
-        });
+            return;
+        }
+
+        await LoginAsync("Auto-connecting to RadioReference...");
     }
 
     private void ForgetCredentialsButton_Click(object sender, RoutedEventArgs e)
@@ -158,42 +172,60 @@ public partial class MainWindow : Window
 
         await RunGuardedAsync("Downloading talkgroups...", async () =>
         {
+            BeginProgress(6);
             var auth = GetAuth();
+            SetStatus("Loading system details...");
             var details = await _radioReferenceClient.GetTrsDetailsAsync(sid, auth);
+            StepProgress();
             if (!string.IsNullOrWhiteSpace(details?.Name))
             {
                 GroupSetNameBox.Text = Rpm2CsvExporter.CleanName(details.Name, 8);
             }
 
+            SetStatus("Downloading talkgroups...");
             var groups = await _radioReferenceClient.GetTrsTalkgroupsAsync(sid, auth);
+            StepProgress();
+            SetStatus("Downloading sites...");
             var sites = await _radioReferenceClient.GetTrsSitesAsync(sid, auth);
+            StepProgress();
 
+            SetStatus("Populating talkgroups...");
             _talkgroups.Clear();
             foreach (var talkgroup in groups.OrderBy(t => t.CategorySort).ThenBy(t => t.Sort).ThenBy(t => t.DecimalId))
             {
                 _talkgroups.Add(talkgroup);
             }
+            StepProgress();
 
+            SetStatus("Populating sites...");
             _sites.Clear();
-            foreach (var site in sites.Where(s => s.ControlFrequencies.Count > 0))
+            foreach (var site in sites)
             {
                 _sites.Add(site);
             }
+            StepProgress();
 
-            RefreshCountyFilterOptions();
+            SetStatus("Refreshing filters...");
+            RefreshFilterOptions();
+            RefreshSiteCountyFilterOptions();
             ExportButton.IsEnabled = _talkgroups.Count > 0;
             ExportSitesButton.IsEnabled = _sites.Count > 0;
+            ExportSiteAliasesButton.IsEnabled = _sites.Count > 0;
             _talkgroupView.Refresh();
+            _siteView.Refresh();
+            StepProgress();
             SetStatus($"Loaded {_talkgroups.Count} talkgroup(s) and {_sites.Count} site(s).");
         });
     }
 
     private void ExportButton_Click(object sender, RoutedEventArgs e)
     {
-        var visibleTalkgroups = _talkgroupView.Cast<Talkgroup>().ToList();
+        var visibleTalkgroups = _talkgroupView.Cast<Talkgroup>()
+            .Where(t => t.IsSelected)
+            .ToList();
         if (visibleTalkgroups.Count == 0)
         {
-            SetStatus("There are no visible talkgroups to export.");
+            SetStatus("There are no selected visible talkgroups to export.");
             return;
         }
 
@@ -238,10 +270,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var selectedSites = SitesBox.SelectedItems.Cast<TrunkedSite>().ToList();
-            var sitesToExport = selectedSites.Count > 0 || ExportAllSitesIfNoneSelectedBox.IsChecked != true
-                ? selectedSites
-                : _sites.ToList();
+            var sitesToExport = SelectedSitesForExport();
 
             if (sitesToExport.Count == 0)
             {
@@ -276,12 +305,52 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ExportSiteAliasesButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var sitesToExport = SelectedSitesForExport();
+
+            if (sitesToExport.Count == 0)
+            {
+                SetStatus("Select one or more sites to export.");
+                return;
+            }
+
+            var options = ReadSiteAliasOptions();
+            var dialog = new SaveFileDialog
+            {
+                Title = "Export RPM2 Site Alias CSV",
+                Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
+                FileName = $"{options.Name}_SITE_ALIAS.csv"
+            };
+
+            if (dialog.ShowDialog(this) != true)
+            {
+                return;
+            }
+
+            Rpm2SiteAliasCsvExporter.Write(dialog.FileName, sitesToExport, options);
+            SetStatus($"Exported {sitesToExport.Count} site alias row(s) to {dialog.FileName}.");
+        }
+        catch (Exception ex)
+        {
+            App.LogException(ex);
+            SetStatus(ex.Message);
+            MessageBox.Show(this, ex.Message, "RadioReference to RPM2", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void SystemResultsBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (SystemResultsBox.SelectedItem is TrunkedSystem system)
         {
             SidBox.Text = system.Sid.ToString();
             GroupSetNameBox.Text = Rpm2CsvExporter.CleanName(system.Name, 8);
+            if (string.IsNullOrWhiteSpace(SiteAliasListNameBox.Text) || SiteAliasListNameBox.Text.Equals("STEL0001", StringComparison.OrdinalIgnoreCase))
+            {
+                SiteAliasListNameBox.Text = Rpm2CsvExporter.CleanName(system.Name, 8);
+            }
         }
     }
 
@@ -290,9 +359,69 @@ public partial class MainWindow : Window
         _talkgroupView?.Refresh();
     }
 
-    private void CountyFilterBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void CategoryFilterCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         _talkgroupView?.Refresh();
+    }
+
+    private void TagFilterCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        _talkgroupView?.Refresh();
+    }
+
+    private void SelectAllCategoriesButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetAllCategoriesSelected(true);
+    }
+
+    private void ClearCategoriesButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetAllCategoriesSelected(false);
+    }
+
+    private void SelectAllTagsButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetAllTagsSelected(true);
+    }
+
+    private void ClearTagsButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetAllTagsSelected(false);
+    }
+
+    private void SelectVisibleTalkgroupsButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetVisibleTalkgroupsSelected(true);
+    }
+
+    private void ClearVisibleTalkgroupsButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetVisibleTalkgroupsSelected(false);
+    }
+
+    private void SelectVisibleSitesButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetVisibleSitesSelected(true);
+    }
+
+    private void ClearSitesButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetAllSitesSelected(false);
+    }
+
+    private void SiteCountyFilterCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        _siteView?.Refresh();
+    }
+
+    private void SelectAllSiteCountiesButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetAllSiteCountyFiltersSelected(true);
+    }
+
+    private void ClearSiteCountiesButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetAllSiteCountyFiltersSelected(false);
     }
 
     private bool FilterTalkgroup(object item)
@@ -307,8 +436,14 @@ public partial class MainWindow : Window
             return false;
         }
 
-        var selectedCounties = SelectedCountyFilters();
-        if (selectedCounties.Count > 0 && !selectedCounties.Contains(talkgroup.CategoryName))
+        var selectedCategories = SelectedCategoryFilters();
+        if (!selectedCategories.Contains(talkgroup.CategoryName))
+        {
+            return false;
+        }
+
+        var selectedTags = SelectedTagFilters();
+        if (!TalkgroupTags(talkgroup).Any(selectedTags.Contains))
         {
             return false;
         }
@@ -326,9 +461,22 @@ public partial class MainWindow : Window
             || talkgroup.TagSummary.Contains(filter, StringComparison.OrdinalIgnoreCase);
     }
 
-    private void RefreshCountyFilterOptions()
+    private bool FilterSite(object item)
     {
-        var selected = SelectedCountyFilters();
+        if (item is not TrunkedSite site)
+        {
+            return false;
+        }
+
+        return SelectedSiteCountyFilters().Contains(SiteCountyName(site));
+    }
+
+    private void RefreshFilterOptions()
+    {
+        var previousSelections = _categoryFilters.ToDictionary(
+            x => x.Name,
+            x => x.IsSelected,
+            StringComparer.OrdinalIgnoreCase);
         var options = _talkgroups
             .Select(t => t.CategoryName)
             .Where(x => !string.IsNullOrWhiteSpace(x))
@@ -336,21 +484,153 @@ public partial class MainWindow : Window
             .OrderBy(x => x)
             .ToList();
 
-        CountyFilterBox.ItemsSource = options;
-        CountyFilterBox.SelectedItems.Clear();
-        foreach (var option in options.Where(selected.Contains))
+        _categoryFilters.Clear();
+        foreach (var option in options)
         {
-            CountyFilterBox.SelectedItems.Add(option);
+            _categoryFilters.Add(new FilterOption(
+                option,
+                !previousSelections.TryGetValue(option, out var isSelected) || isSelected));
+        }
+
+        RefreshTagFilterOptions();
+    }
+
+    private void RefreshSiteCountyFilterOptions()
+    {
+        var previousSelections = _siteCountyFilters.ToDictionary(
+            x => x.Name,
+            x => x.IsSelected,
+            StringComparer.OrdinalIgnoreCase);
+        var options = _sites
+            .Select(SiteCountyName)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x.Equals("(No county)", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenBy(x => x)
+            .ToList();
+
+        _siteCountyFilters.Clear();
+        foreach (var option in options)
+        {
+            _siteCountyFilters.Add(new FilterOption(
+                option,
+                !previousSelections.TryGetValue(option, out var isSelected) || isSelected));
         }
     }
 
-    private HashSet<string> SelectedCountyFilters()
+    private HashSet<string> SelectedCategoryFilters()
     {
-        return CountyFilterBox.SelectedItems
-            .Cast<object>()
-            .Select(x => x.ToString())
-            .Where(x => !string.IsNullOrWhiteSpace(x))
+        return _categoryFilters
+            .Where(x => x.IsSelected)
+            .Select(x => x.Name)
             .ToHashSet(StringComparer.OrdinalIgnoreCase)!;
+    }
+
+    private void RefreshTagFilterOptions()
+    {
+        var previousSelections = _tagFilters.ToDictionary(
+            x => x.Name,
+            x => x.IsSelected,
+            StringComparer.OrdinalIgnoreCase);
+        var options = _talkgroups
+            .SelectMany(TalkgroupTags)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x.Equals(NoTagFilterName, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenBy(x => x)
+            .ToList();
+
+        _tagFilters.Clear();
+        foreach (var option in options)
+        {
+            _tagFilters.Add(new FilterOption(
+                option,
+                !previousSelections.TryGetValue(option, out var isSelected) || isSelected));
+        }
+    }
+
+    private HashSet<string> SelectedTagFilters()
+    {
+        return _tagFilters
+            .Where(x => x.IsSelected)
+            .Select(x => x.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase)!;
+    }
+
+    private HashSet<string> SelectedSiteCountyFilters()
+    {
+        return _siteCountyFilters
+            .Where(x => x.IsSelected)
+            .Select(x => x.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase)!;
+    }
+
+    private void SetAllCategoriesSelected(bool isSelected)
+    {
+        foreach (var category in _categoryFilters)
+        {
+            category.IsSelected = isSelected;
+        }
+
+        CountyFilterBox.Items.Refresh();
+        _talkgroupView.Refresh();
+    }
+
+    private void SetAllTagsSelected(bool isSelected)
+    {
+        foreach (var tag in _tagFilters)
+        {
+            tag.IsSelected = isSelected;
+        }
+
+        TagFilterBox.Items.Refresh();
+        _talkgroupView.Refresh();
+    }
+
+    private void SetAllSiteCountyFiltersSelected(bool isSelected)
+    {
+        foreach (var county in _siteCountyFilters)
+        {
+            county.IsSelected = isSelected;
+        }
+
+        SiteCountyFilterBox.Items.Refresh();
+        _siteView.Refresh();
+    }
+
+    private void SetVisibleTalkgroupsSelected(bool isSelected)
+    {
+        var count = 0;
+        foreach (var talkgroup in _talkgroupView.Cast<Talkgroup>())
+        {
+            talkgroup.IsSelected = isSelected;
+            count++;
+        }
+
+        TalkgroupsGrid.Items.Refresh();
+        SetStatus($"{(isSelected ? "Selected" : "Cleared")} {count} visible talkgroup(s).");
+    }
+
+    private void SetAllSitesSelected(bool isSelected)
+    {
+        foreach (var site in _sites)
+        {
+            site.IsSelected = isSelected;
+        }
+
+        SitesBox.Items.Refresh();
+        SetStatus($"{(isSelected ? "Selected" : "Cleared")} {_sites.Count} site(s).");
+    }
+
+    private void SetVisibleSitesSelected(bool isSelected)
+    {
+        var count = 0;
+        foreach (var site in _siteView.Cast<TrunkedSite>())
+        {
+            site.IsSelected = isSelected;
+            count++;
+        }
+
+        SitesBox.Items.Refresh();
+        SetStatus($"{(isSelected ? "Selected" : "Cleared")} {count} visible site(s).");
     }
 
     private decimal ReadSiteTransmitPlaceholder()
@@ -366,6 +646,39 @@ public partial class MainWindow : Window
         }
 
         return value;
+    }
+
+    private List<TrunkedSite> SelectedSitesForExport()
+    {
+        return _sites.Where(s => s.IsSelected).ToList();
+    }
+
+    private Rpm2SiteAliasOptions ReadSiteAliasOptions()
+    {
+        var name = Rpm2SiteAliasCsvExporter.CleanAliasName(SiteAliasListNameBox.Text);
+        var wanList = SiteAliasWanListBox.Text.Trim();
+        var network = SiteAliasNetworkBox.Text.Trim();
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new InvalidOperationException("Site alias list name must contain at least one alphanumeric character.");
+        }
+
+        if (string.IsNullOrWhiteSpace(wanList))
+        {
+            throw new InvalidOperationException("P25 WAN list is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(network))
+        {
+            throw new InvalidOperationException("WA network is required.");
+        }
+
+        SiteAliasListNameBox.Text = name;
+        SiteAliasWanListBox.Text = wanList;
+        SiteAliasNetworkBox.Text = network;
+
+        return new Rpm2SiteAliasOptions(name, wanList, network);
     }
 
     private static bool IsValidSiteTransmitPlaceholder(decimal value)
@@ -391,7 +704,20 @@ public partial class MainWindow : Window
         _statesLoaded = true;
     }
 
-    private void LoadSavedCredentials()
+    private async Task LoginAsync(string busyText)
+    {
+        await RunGuardedAsync(busyText, async () =>
+        {
+            var user = await _radioReferenceClient.GetUserDataAsync(GetAuth());
+            await LoadStatesAsync();
+            SaveCredentialsIfRequested();
+            SetStatus(string.IsNullOrWhiteSpace(user)
+                ? "Login succeeded."
+                : $"Login succeeded: {user}");
+        });
+    }
+
+    private bool LoadSavedCredentials()
     {
         try
         {
@@ -399,7 +725,7 @@ public partial class MainWindow : Window
             if (credentials is null)
             {
                 ForgetCredentialsButton.IsEnabled = false;
-                return;
+                return false;
             }
 
             UsernameBox.Text = credentials.Username;
@@ -408,12 +734,14 @@ public partial class MainWindow : Window
             SaveCredentialsBox.IsChecked = true;
             ForgetCredentialsButton.IsEnabled = true;
             SetStatus("Saved credentials loaded.");
+            return true;
         }
         catch (Exception ex)
         {
             App.LogException(ex);
             ForgetCredentialsButton.IsEnabled = CredentialStorage.Exists;
             SetStatus("Saved credentials could not be loaded.");
+            return false;
         }
     }
 
@@ -465,6 +793,7 @@ public partial class MainWindow : Window
     {
         SetBusy(true);
         SetStatus(busyText);
+        BeginIndeterminateProgress();
 
         try
         {
@@ -478,6 +807,7 @@ public partial class MainWindow : Window
         }
         finally
         {
+            EndProgress();
             SetBusy(false);
         }
     }
@@ -490,10 +820,68 @@ public partial class MainWindow : Window
         LoadButton.IsEnabled = !isBusy;
         ExportButton.IsEnabled = !isBusy && _talkgroups.Count > 0;
         ExportSitesButton.IsEnabled = !isBusy && _sites.Count > 0;
+        ExportSiteAliasesButton.IsEnabled = !isBusy && _sites.Count > 0;
     }
 
     private void SetStatus(string message)
     {
         StatusText.Text = message;
+    }
+
+    private void BeginIndeterminateProgress()
+    {
+        BusyProgressBar.Visibility = Visibility.Visible;
+        BusyProgressBar.IsIndeterminate = true;
+        BusyProgressBar.Value = 0;
+    }
+
+    private void BeginProgress(int steps)
+    {
+        BusyProgressBar.Visibility = Visibility.Visible;
+        BusyProgressBar.IsIndeterminate = false;
+        BusyProgressBar.Minimum = 0;
+        BusyProgressBar.Maximum = Math.Max(steps, 1);
+        BusyProgressBar.Value = 0;
+    }
+
+    private void StepProgress()
+    {
+        BusyProgressBar.IsIndeterminate = false;
+        BusyProgressBar.Value = Math.Min(BusyProgressBar.Value + 1, BusyProgressBar.Maximum);
+    }
+
+    private void EndProgress()
+    {
+        BusyProgressBar.IsIndeterminate = false;
+        BusyProgressBar.Value = 0;
+        BusyProgressBar.Visibility = Visibility.Collapsed;
+    }
+
+    private static string SiteCountyName(TrunkedSite site)
+    {
+        var location = site.Location.Trim();
+        return string.IsNullOrWhiteSpace(location) ? "(No county)" : location;
+    }
+
+    private static IReadOnlyList<string> TalkgroupTags(Talkgroup talkgroup)
+    {
+        if (string.IsNullOrWhiteSpace(talkgroup.TagSummary))
+        {
+            return [NoTagFilterName];
+        }
+
+        var tags = talkgroup.TagSummary
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return tags.Count > 0 ? tags : [NoTagFilterName];
+    }
+
+    private sealed class FilterOption(string name, bool isSelected)
+    {
+        public string Name { get; } = name;
+        public bool IsSelected { get; set; } = isSelected;
     }
 }

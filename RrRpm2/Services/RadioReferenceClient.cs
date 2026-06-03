@@ -17,6 +17,7 @@ public sealed class RadioReferenceClient
     private static readonly XNamespace Rr = Namespace;
     private readonly HttpClient _httpClient = new();
     private IReadOnlySet<string>? _apco25ExclusiveVoiceKeys;
+    private IReadOnlyDictionary<int, string>? _tagDefinitions;
 
     public async Task<string> GetUserDataAsync(RadioReferenceAuth auth)
     {
@@ -128,6 +129,7 @@ public sealed class RadioReferenceClient
     public async Task<IReadOnlyList<Talkgroup>> GetTrsTalkgroupsAsync(int sid, RadioReferenceAuth auth)
     {
         var categories = await GetTrsTalkgroupCategoriesAsync(sid, auth);
+        var tagDefinitions = await GetTagDefinitionsAsync(auth);
         var document = await CallAsync("getTrsTalkgroups",
         [
             SoapValue("sid", sid),
@@ -155,7 +157,7 @@ public sealed class RadioReferenceClient
                     CategoryName = category.Name,
                     CategorySort = category.Sort,
                     Sort = ElementInt(x, "tgSort"),
-                    TagSummary = ReadTags(x)
+                    TagSummary = ReadTags(x, tagDefinitions)
                 };
             })
             .ToList();
@@ -169,6 +171,8 @@ public sealed class RadioReferenceClient
             .Select(x => new TrunkedSite
             {
                 SiteId = ElementInt(x, "siteId"),
+                RfssId = FirstElementInt(x, "rfssId", "siteRfss", "rfss", "rfssNumber", "p25RfssId"),
+                RfssSiteId = FirstElementInt(x, "p25SiteId", "siteIdHex", "siteNumberDec", "rfssSiteId"),
                 SiteNumber = ElementValue(x, "siteNumber") ?? string.Empty,
                 Description = ElementValue(x, "siteDescr") ?? string.Empty,
                 Location = ElementValue(x, "siteLocation") ?? string.Empty,
@@ -204,6 +208,30 @@ public sealed class RadioReferenceClient
                     var node = x.First();
                     return (ElementValue(node, "tgCname") ?? string.Empty, ElementInt(node, "tgSort"));
                 });
+    }
+
+    private async Task<IReadOnlyDictionary<int, string>> GetTagDefinitionsAsync(RadioReferenceAuth auth)
+    {
+        if (_tagDefinitions is not null)
+        {
+            return _tagDefinitions;
+        }
+
+        var document = await CallAsync("getTag", [SoapValue("id", 0)], auth);
+        _tagDefinitions = Descendants(document, "item", "tag")
+            .Select(x => new
+            {
+                Id = ElementInt(x, "tagId"),
+                Description = ElementValue(x, "tagDescr") ?? string.Empty
+            })
+            .Where(x => x.Id > 0 && !string.IsNullOrWhiteSpace(x.Description))
+            .GroupBy(x => x.Id)
+            .ToDictionary(
+                x => x.Key,
+                x => x.First().Description,
+                EqualityComparer<int>.Default);
+
+        return _tagDefinitions;
     }
 
     private async Task<RadioReferenceState> FindStateAsync(string stateQuery, RadioReferenceAuth auth)
@@ -393,6 +421,37 @@ public sealed class RadioReferenceClient
             : 0;
     }
 
+    private static int? FirstElementInt(XElement node, params string[] localNames)
+    {
+        foreach (var localName in localNames)
+        {
+            var value = ElementValue(node, localName);
+            if (TryParseFlexibleInt(value, out var parsedValue))
+            {
+                return parsedValue;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool TryParseFlexibleInt(string? value, out int result)
+    {
+        result = 0;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var text = value.Trim();
+        if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            return int.TryParse(text[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
+        }
+
+        return int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+    }
+
     private static DateTime? ElementDate(XElement node, string localName)
     {
         return DateTime.TryParse(ElementValue(node, localName), CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var value)
@@ -407,16 +466,32 @@ public sealed class RadioReferenceClient
             : null;
     }
 
-    private static string ReadTags(XElement talkgroup)
+    private static string ReadTags(XElement talkgroup, IReadOnlyDictionary<int, string> tagDefinitions)
     {
-        var tags = talkgroup.Elements()
+        var tagValues = talkgroup.Elements()
             .Where(x => x.Name.LocalName.Equals("tags", StringComparison.OrdinalIgnoreCase))
             .Descendants()
-            .Where(x => !x.HasElements && !string.IsNullOrWhiteSpace(x.Value))
-            .Select(x => x.Value.Trim())
+            .Where(x => x.Name.LocalName.Equals("item", StringComparison.OrdinalIgnoreCase)
+                || x.Name.LocalName.Equals("tag", StringComparison.OrdinalIgnoreCase))
+            .Select(x => ReadTagValue(x, tagDefinitions))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return string.Join(", ", tags);
+        return string.Join(", ", tagValues);
+    }
+
+    private static string ReadTagValue(XElement tag, IReadOnlyDictionary<int, string> tagDefinitions)
+    {
+        var description = ElementValue(tag, "tagDescr");
+        if (!string.IsNullOrWhiteSpace(description))
+        {
+            return description;
+        }
+
+        var id = ElementInt(tag, "tagId");
+        return id > 0 && tagDefinitions.TryGetValue(id, out var resolvedDescription)
+            ? resolvedDescription
+            : string.Empty;
     }
 }
