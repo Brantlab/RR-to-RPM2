@@ -356,7 +356,14 @@
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Style="{StaticResource FieldLabel}" Text="Frequency CSV" />
                                     <TextBlock Style="{StaticResource FieldLabel}" Text="TX fallback" />
-                                    <TextBox x:Name="SiteTransmitPlaceholderBox" Text="763.00000" ToolTip="Fallback dummy transmit frequency; export uses the matching receive-frequency bank when possible." />
+                                    <TextBox x:Name="SiteTransmitPlaceholderBox" Text="150.00000" ToolTip="Fallback dummy transmit frequency; export uses the matching receive-frequency bank when possible." />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Include frequencies" />
+                                    <WrapPanel Margin="0,2,0,4">
+                                        <CheckBox x:Name="IncludeDedicatedControlBox" Content="Primary" IsChecked="True" ToolTip="RadioReference use code d." />
+                                        <CheckBox x:Name="IncludeAlternateControlBox" Content="Alternate" IsChecked="True" ToolTip="RadioReference use code a." />
+                                        <CheckBox x:Name="IncludeGenericControlBox" Content="Control" IsChecked="True" ToolTip="RadioReference use code c." />
+                                        <CheckBox x:Name="IncludeOtherSiteFrequenciesBox" Content="Other" IsChecked="False" ToolTip="Frequencies without a primary, alternate, or control marker." />
+                                    </WrapPanel>
                                     <Button x:Name="ExportSitesButton" Content="Export Site CSV" Click="ExportSitesButton_Click" IsEnabled="False" HorizontalAlignment="Left" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1">

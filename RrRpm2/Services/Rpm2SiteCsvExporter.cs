@@ -21,18 +21,29 @@ public static class Rpm2SiteCsvExporter
         "Channel Index"
     ];
 
-    public static void Write(string path, IReadOnlyList<TrunkedSite> sites, string name, decimal transmitPlaceholder)
+    public static int Write(
+        string path,
+        IReadOnlyList<TrunkedSite> sites,
+        string name,
+        decimal transmitPlaceholder,
+        Rpm2SiteFrequencyExportOptions options)
     {
         using var writer = new StreamWriter(path, false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         writer.WriteLine(ToCsv(Header));
         writer.WriteLine(ToCsv(FrequencySetRow(name)));
 
         var channelIndex = 1;
-        foreach (var frequency in sites.SelectMany(s => s.ControlFrequencies).DistinctBy(f => f.Frequency).OrderBy(f => f.Frequency))
+        foreach (var frequency in sites
+            .SelectMany(s => s.Frequencies)
+            .Where(options.Includes)
+            .DistinctBy(f => f.Frequency)
+            .OrderBy(f => f.Frequency))
         {
             writer.WriteLine(ToCsv(FrequencyRow(name, ResolveTransmitFrequency(frequency.Frequency, transmitPlaceholder), frequency.Frequency, channelIndex)));
             channelIndex++;
         }
+
+        return channelIndex - 1;
     }
 
     private static string[] FrequencySetRow(string name)
@@ -91,6 +102,16 @@ public static class Rpm2SiteCsvExporter
 
     private static (decimal Start, decimal End)? FindTransmitBank(decimal frequency)
     {
+        if (IsInRange(frequency, 136.00000m, 174.00000m))
+        {
+            return (136.00000m, 174.00000m);
+        }
+
+        if (IsInRange(frequency, 380.00000m, 512.00000m))
+        {
+            return (380.00000m, 512.00000m);
+        }
+
         if (IsInRange(frequency, 763.00000m, 776.00000m))
         {
             return (763.00000m, 776.00000m);
@@ -127,5 +148,23 @@ public static class Rpm2SiteCsvExporter
         }
 
         return value;
+    }
+}
+
+public sealed record Rpm2SiteFrequencyExportOptions(
+    bool IncludeDedicatedControl,
+    bool IncludeAlternateControl,
+    bool IncludeGenericControl,
+    bool IncludeOtherFrequencies)
+{
+    public bool Includes(TrunkedSiteFrequency frequency)
+    {
+        return frequency.UseCategory switch
+        {
+            TrunkedSiteFrequencyUse.DedicatedControl => IncludeDedicatedControl,
+            TrunkedSiteFrequencyUse.AlternateControl => IncludeAlternateControl,
+            TrunkedSiteFrequencyUse.GenericControl => IncludeGenericControl,
+            _ => IncludeOtherFrequencies
+        };
     }
 }

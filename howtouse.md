@@ -126,9 +126,14 @@ Use this when RPM2 needs a trunked frequency set/control channel CSV.
 1. Go to the `Sites` tab.
 2. Check the sites you want.
 3. Set `TX fallback`.
-4. Click `Export Site CSV`.
+4. Check the frequency types to include:
+   - `Primary`: RadioReference use code `d`
+   - `Alternate`: RadioReference use code `a`
+   - `Control`: RadioReference use code `c`
+   - `Other`: frequencies without a primary, alternate, or control marker
+5. Click `Export Site CSV`.
 
-The exporter uses selected site control and alternate-control frequencies.
+The exporter uses selected site frequencies that match the checked frequency types. `TX fallback` accepts VHF, UHF, 700 MHz, and 800 MHz ranges.
 
 ## Export Site Alias CSV
 

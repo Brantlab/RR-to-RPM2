@@ -281,6 +281,18 @@ public partial class MainWindow : Window
             var name = Rpm2CsvExporter.CleanName(GroupSetNameBox.Text, 8);
             GroupSetNameBox.Text = name;
             var transmitPlaceholder = ReadSiteTransmitPlaceholder();
+            var frequencyOptions = ReadSiteFrequencyExportOptions();
+            var frequencyCount = sitesToExport
+                .SelectMany(s => s.Frequencies)
+                .Where(frequencyOptions.Includes)
+                .DistinctBy(f => f.Frequency)
+                .Count();
+
+            if (frequencyCount == 0)
+            {
+                SetStatus("Selected sites do not contain frequencies matching the checked frequency types.");
+                return;
+            }
 
             var dialog = new SaveFileDialog
             {
@@ -294,8 +306,8 @@ public partial class MainWindow : Window
                 return;
             }
 
-            Rpm2SiteCsvExporter.Write(dialog.FileName, sitesToExport, name, transmitPlaceholder);
-            SetStatus($"Exported {sitesToExport.Count} site(s) to {dialog.FileName}.");
+            var exportedFrequencyCount = Rpm2SiteCsvExporter.Write(dialog.FileName, sitesToExport, name, transmitPlaceholder, frequencyOptions);
+            SetStatus($"Exported {exportedFrequencyCount} unique frequency row(s) from {sitesToExport.Count} site(s) to {dialog.FileName}.");
         }
         catch (Exception ex)
         {
@@ -642,7 +654,7 @@ public partial class MainWindow : Window
 
         if (!IsValidSiteTransmitPlaceholder(value))
         {
-            throw new InvalidOperationException("Site TX placeholder must be between 763-776, 793-805.99375, or 825-896 MHz.");
+            throw new InvalidOperationException("Site TX placeholder must be between 136-174, 380-512, 763-776, 793-805.99375, or 825-896 MHz.");
         }
 
         return value;
@@ -681,9 +693,30 @@ public partial class MainWindow : Window
         return new Rpm2SiteAliasOptions(name, wanList, network);
     }
 
+    private Rpm2SiteFrequencyExportOptions ReadSiteFrequencyExportOptions()
+    {
+        var options = new Rpm2SiteFrequencyExportOptions(
+            IncludeDedicatedControlBox.IsChecked == true,
+            IncludeAlternateControlBox.IsChecked == true,
+            IncludeGenericControlBox.IsChecked == true,
+            IncludeOtherSiteFrequenciesBox.IsChecked == true);
+
+        if (!options.IncludeDedicatedControl
+            && !options.IncludeAlternateControl
+            && !options.IncludeGenericControl
+            && !options.IncludeOtherFrequencies)
+        {
+            throw new InvalidOperationException("Select at least one frequency type to export.");
+        }
+
+        return options;
+    }
+
     private static bool IsValidSiteTransmitPlaceholder(decimal value)
     {
-        return value is >= 763.00000m and <= 776.00000m
+        return value is >= 136.00000m and <= 174.00000m
+            || value is >= 380.00000m and <= 512.00000m
+            || value is >= 763.00000m and <= 776.00000m
             || value is >= 793.00000m and <= 805.99375m
             || value is >= 825.00000m and <= 896.00000m;
     }
