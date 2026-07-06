@@ -28,6 +28,21 @@ If saved credentials are available, the app auto-connects to RadioReference when
 
 Use `Forget` to remove saved credentials.
 
+## Privacy and Usage Statistics
+
+On first launch, the app asks whether you want to share anonymous usage
+statistics. Sharing is optional and remains disabled unless you select
+`Allow anonymous statistics`.
+
+When enabled, the app reports its version and Windows architecture, launches,
+update-check results, broad successful-export count ranges, and exception types.
+It does not report RadioReference credentials or data, system or talkgroup IDs,
+filenames, exported content, exception messages, or stack traces.
+
+Change your choice at any time from
+`Help > Privacy & Usage Statistics`. Turning statistics off also deletes the
+random installation identifier stored by the app.
+
 ## Find a Trunked System
 
 You can load a system by RadioReference SID, SysID lookup, or state/county search.

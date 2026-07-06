@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private readonly ICollectionView _talkgroupView;
     private readonly ICollectionView _siteView;
     private readonly RadioReferenceClient _radioReferenceClient = new();
+    private readonly GitHubUpdateService _gitHubUpdateService = new();
     private bool _statesLoaded;
     private bool _savedCredentialsLoaded;
 
@@ -46,6 +47,104 @@ public partial class MainWindow : Window
         Loaded += MainWindow_Loaded;
     }
 
+    private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    private void UserGuideMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        AppInfo.OpenUrl(AppInfo.UserGuideUrl);
+    }
+
+    private void GitHubMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        AppInfo.OpenUrl(AppInfo.RepositoryUrl);
+    }
+
+    private void TelemetryPrivacyMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new TelemetryPrivacyWindow(
+            isFirstRun: false,
+            currentValue: App.Telemetry.IsEnabled)
+        {
+            Owner = this
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            SaveTelemetryPreference(dialog.SelectedEnabled);
+        }
+    }
+
+    private async void CheckForUpdatesMenuItem_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        CheckForUpdatesMenuItem.IsEnabled = false;
+
+        try
+        {
+            SetStatus("Checking GitHub for updates...");
+            var release = await _gitHubUpdateService.GetLatestReleaseAsync();
+
+            if (release.Version > AppInfo.Version)
+            {
+                _ = App.Telemetry.TrackUpdateCheckAsync("update_available");
+                SetStatus($"Update {release.TagName} is available.");
+                var result = MessageBox.Show(
+                    this,
+                    $"Version {release.TagName} is available.\n\n" +
+                    $"You are currently running version {AppInfo.DisplayVersion}.\n\n" +
+                    "Open the GitHub release page?",
+                    "Update Available",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    AppInfo.OpenUrl(release.PageUrl);
+                }
+            }
+            else
+            {
+                _ = App.Telemetry.TrackUpdateCheckAsync("current");
+                SetStatus("You are running the latest version.");
+                MessageBox.Show(
+                    this,
+                    $"You are up to date.\n\nInstalled version: {AppInfo.DisplayVersion}\n" +
+                    $"Latest release: {release.TagName}",
+                    "No Updates Available",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            _ = App.Telemetry.TrackUpdateCheckAsync("failed");
+            App.LogException(ex);
+            SetStatus("Unable to check for updates.");
+            MessageBox.Show(
+                this,
+                "The update check could not reach GitHub.\n\n" + ex.Message,
+                "Update Check Failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally
+        {
+            CheckForUpdatesMenuItem.IsEnabled = true;
+        }
+    }
+
+    private void AboutMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        new AboutWindow
+        {
+            Owner = this
+        }.ShowDialog();
+    }
+
     private async void TestConnectionButton_Click(object sender, RoutedEventArgs e)
     {
         await LoginAsync("Logging in to RadioReference...");
@@ -53,12 +152,53 @@ public partial class MainWindow : Window
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        InitializeTelemetry();
+
         if (!_savedCredentialsLoaded)
         {
             return;
         }
 
         await LoginAsync("Auto-connecting to RadioReference...");
+    }
+
+    private void InitializeTelemetry()
+    {
+        if (!App.Telemetry.HasConsentDecision)
+        {
+            var dialog = new TelemetryPrivacyWindow(
+                isFirstRun: true,
+                currentValue: false)
+            {
+                Owner = this
+            };
+
+            var enabled = dialog.ShowDialog() == true && dialog.SelectedEnabled;
+            SaveTelemetryPreference(enabled);
+        }
+
+        _ = App.Telemetry.TrackStartupAsync();
+    }
+
+    private void SaveTelemetryPreference(bool enabled)
+    {
+        try
+        {
+            App.Telemetry.SetEnabled(enabled);
+            SetStatus(enabled
+                ? "Anonymous usage statistics enabled."
+                : "Anonymous usage statistics disabled.");
+        }
+        catch (Exception ex)
+        {
+            App.LogException(ex);
+            MessageBox.Show(
+                this,
+                "Your telemetry preference could not be saved.\n\n" + ex.Message,
+                "Privacy Setting",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
     }
 
     private void ForgetCredentialsButton_Click(object sender, RoutedEventArgs e)
@@ -263,6 +403,9 @@ public partial class MainWindow : Window
             MandownBox.IsChecked == true);
 
         Rpm2CsvExporter.Write(dialog.FileName, visibleTalkgroups, options);
+        _ = App.Telemetry.TrackExportAsync(
+            "talkgroups_exported",
+            visibleTalkgroups.Count);
         SetStatus($"Exported {visibleTalkgroups.Count} talkgroup(s) to {dialog.FileName}.");
     }
 
@@ -307,6 +450,9 @@ public partial class MainWindow : Window
             }
 
             var exportedFrequencyCount = Rpm2SiteCsvExporter.Write(dialog.FileName, sitesToExport, name, transmitPlaceholder, frequencyOptions);
+            _ = App.Telemetry.TrackExportAsync(
+                "sites_exported",
+                exportedFrequencyCount);
             SetStatus($"Exported {exportedFrequencyCount} unique frequency row(s) from {sitesToExport.Count} site(s) to {dialog.FileName}.");
         }
         catch (Exception ex)
@@ -343,6 +489,9 @@ public partial class MainWindow : Window
             }
 
             Rpm2SiteAliasCsvExporter.Write(dialog.FileName, sitesToExport, options);
+            _ = App.Telemetry.TrackExportAsync(
+                "sites_exported",
+                sitesToExport.Count);
             SetStatus($"Exported {sitesToExport.Count} site alias row(s) to {dialog.FileName}.");
         }
         catch (Exception ex)

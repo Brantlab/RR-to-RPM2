@@ -57,6 +57,40 @@ cd .\RrRpm2
 dotnet run
 ```
 
+## Help and Updates
+
+The app's `Help` menu opens the user guide and GitHub project page. Use
+`Help > Check for Updates` to compare the installed version with the latest
+GitHub release. When a newer release is available, the app can open its release
+page in the default browser.
+
+## Optional Usage Statistics
+
+On first launch, the app asks whether to share anonymous usage statistics with
+BrantLab's self-hosted telemetry service. No telemetry is sent until the user
+explicitly opts in.
+
+When enabled, the app sends:
+
+- App version, Windows version, and processor architecture
+- App launches and one daily-active event
+- Update-check results
+- Successful talkgroup and site export counts, grouped into broad count ranges
+- Exception types for unexpected errors
+- A randomly generated installation identifier, stored locally and transformed
+  by the server with keyed HMAC-SHA256 before storage
+
+The app never sends:
+
+- RadioReference usernames, passwords, API keys, or credentials
+- RadioReference system IDs, talkgroup IDs, site data, or downloaded content
+- Filenames, file paths, CSV contents, or export values
+- Exception messages or stack traces
+
+The choice can be changed at any time under
+`Help > Privacy & Usage Statistics`. Disabling statistics stops future events
+and deletes the locally generated installation identifier.
+
 ## Release Builds
 
 GitHub Actions publishes a Windows x64 build when a tag starting with `v` is pushed:

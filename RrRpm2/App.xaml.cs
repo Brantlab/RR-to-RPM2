@@ -1,11 +1,14 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
+using RrRpm2.Services;
 
 namespace RrRpm2;
 
 public partial class App : Application
 {
+    public static TelemetryService Telemetry { get; } = new();
+
     private static readonly string LogPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "RR-RPM2",
@@ -34,6 +37,7 @@ public partial class App : Application
     private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         LogException(e.Exception);
+        _ = Telemetry.TrackCrashAsync(e.Exception);
         MessageBox.Show(e.Exception.Message, "RadioReference to RPM2", MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
     }
@@ -43,12 +47,14 @@ public partial class App : Application
         if (e.ExceptionObject is Exception exception)
         {
             LogException(exception);
+            _ = Telemetry.TrackCrashAsync(exception);
         }
     }
 
     private static void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
     {
         LogException(e.Exception);
+        _ = Telemetry.TrackCrashAsync(e.Exception);
         e.SetObserved();
     }
 }

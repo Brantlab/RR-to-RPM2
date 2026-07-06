@@ -38,6 +38,23 @@
     </Window.Resources>
 
     <DockPanel Background="#F5F7F9">
+        <Menu DockPanel.Dock="Top" Background="#FFFFFF">
+            <MenuItem Header="_File">
+                <MenuItem Header="E_xit" Click="ExitMenuItem_Click" />
+            </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem Header="_User Guide" Click="UserGuideMenuItem_Click" />
+                <MenuItem Header="View on _GitHub" Click="GitHubMenuItem_Click" />
+                <Separator />
+                <MenuItem x:Name="CheckForUpdatesMenuItem"
+                          Header="Check for _Updates..."
+                          Click="CheckForUpdatesMenuItem_Click" />
+                <MenuItem Header="_Privacy &amp; Usage Statistics..."
+                          Click="TelemetryPrivacyMenuItem_Click" />
+                <Separator />
+                <MenuItem Header="_About..." Click="AboutMenuItem_Click" />
+            </MenuItem>
+        </Menu>
         <Border DockPanel.Dock="Top" Background="#FFFFFF" BorderBrush="#D7DEE6" BorderThickness="0,0,0,1" Padding="10,8">
             <Grid>
                 <Grid.ColumnDefinitions>
